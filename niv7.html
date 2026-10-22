@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Niveau 7 — Analyse malware</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#070b14;color:#e8eef7;line-height:1.7;font-size:15px;min-height:100vh}
+h2{color:#4ade80;margin-bottom:12px;font-size:1.3rem}
+h3{color:#86efac;margin:14px 0 8px;font-size:1rem}
+h4{color:#6ee7b7;margin:10px 0 6px;font-size:.95rem}
+p{margin:8px 0;color:#cbd5e1}
+ul,ol{padding-left:22px;margin:8px 0}
+li{margin-bottom:5px;color:#cbd5e1}
+strong{color:#fbbf24}
+em{color:#4ade80;font-style:normal;font-weight:600}
+code{background:#0a1220;padding:2px 6px;border-radius:4px;color:#4ade80;font-size:.88em;font-family:monospace;border:1px solid #1e2a44}
+pre{background:#050914;padding:12px;border-radius:6px;overflow-x:auto;font-size:.82em;margin:10px 0;color:#6ee7b7;border:1px solid #1e2a44;white-space:pre}
+a{color:#00d4ff;text-decoration:none}
+button{background:#22c55e;color:#052e16;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:.9rem;font-family:inherit;margin:3px}
+button:hover{background:#16a34a}
+button.sec{background:#1a2540;color:#e8eef7;border:1px solid #2a3a5c}
+button.gold{background:#fbbf24;color:#1a1200}
+header{background:#111a2e;padding:14px 20px;border-bottom:2px solid #22c55e;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:10}
+.logo{color:#4ade80;font-weight:800;cursor:pointer;font-size:.95rem}
+.hs{color:#94a3b8;font-size:.78rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hs .pill{background:#0f1729;padding:5px 10px;border-radius:16px;border:1px solid #1e2a44;font-weight:600}
+.hs .pill b{color:#4ade80}
+.hs a{color:#ef4444;cursor:pointer;font-weight:700;padding:5px 10px}
+main{max-width:950px;margin:0 auto;padding:20px 16px 60px}
+.card{background:#111a2e;border-radius:12px;padding:20px;margin-bottom:14px;border:1px solid #1e2a44}
+.crumb{font-size:.82rem;color:#64748b;margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap}
+.crumb a{color:#00d4ff;cursor:pointer}
+.intro{background:#052e16;padding:14px;border-radius:8px;margin:12px 0;border-left:4px solid #22c55e;font-style:italic;color:#bbf7d0}
+.cours{line-height:1.7}
+.cours h3{color:#86efac}
+.cours h4{color:#6ee7b7}
+.cours .box{padding:12px;border-radius:8px;margin:10px 0;border-left:3px solid #fbbf24;background:#3a2a0a;color:#f5e3a8}
+.cours .warn{padding:12px;border-radius:8px;margin:10px 0;border-left:3px solid #ef4444;background:#3a0f0f;color:#f4c4c4}
+.cours .good{padding:12px;border-radius:8px;margin:10px 0;border-left:3px solid #22c55e;background:#0a3a1a;color:#a7f3c4}
+.cours .bank{padding:12px;border-radius:8px;margin:10px 0;border-left:3px solid #22c55e;background:#0d3a1f;color:#b5e8c8}
+.cours table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.88em}
+.cours th{background:#0f1729;color:#4ade80;padding:8px;text-align:left;border:1px solid #1e2a44}
+.cours td{border:1px solid #1e2a44;padding:8px;color:#cbd5e1}
+.quiz{background:#0a1220;padding:14px;border-radius:10px;margin-top:12px;border:1px solid #1e2a44}
+.q{margin-bottom:14px;padding:12px;background:#0f1729;border-radius:8px;border:1px solid #1e2a44}
+.q>p:first-child{font-weight:600;margin-bottom:10px;color:#e8eef7}
+.q label{display:block;padding:10px 12px;margin:5px 0;background:#111827;border-radius:7px;cursor:pointer;border:1.5px solid transparent;color:#cbd5e1;font-size:.9rem}
+.q label:hover{background:#1a2540}
+.q input{margin-right:10px}
+.ok{background:rgba(34,197,94,.2)!important;border-color:#22c55e!important;color:#a7f3c4!important}
+.ko{background:rgba(239,68,68,.2)!important;border-color:#ef4444!important;color:#fca5a5!important}
+.exp{background:#050914;padding:10px;border-radius:6px;margin-top:8px;font-size:.85em;color:#cbd5e1;border-left:3px solid #fbbf24;display:none}
+.res{margin-top:12px;padding:14px;border-radius:8px;font-weight:700;text-align:center}
+.res.g{background:rgba(34,197,94,.2);color:#a7f3c4;border:1px solid #22c55e}
+.res.r{background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid #ef4444}
+.nav{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:12px}
+.btn{background:#0f1729;padding:14px;border-radius:10px;cursor:pointer;border:2px solid transparent;text-align:left;transition:all .15s}
+.btn:hover{border-color:#22c55e}
+.btn.done{border-color:#22c55e;background:#0d3a1f}
+.btn .n{font-weight:800;color:#4ade80;display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.5px}
+.btn.done .n{color:#86efac}
+.btn .ti{display:block;font-size:.88rem;color:#e8eef7;margin-top:5px;font-weight:600}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:14px 0}
+.stat{background:#111a2e;padding:16px;border-radius:12px;border:1px solid #1e2a44;text-align:center;border-top:3px solid #22c55e}
+.stat .big{font-size:2em;font-weight:800;color:#4ade80;display:block;line-height:1.1}
+.stat .lbl{font-size:.75em;color:#94a3b8;margin-top:6px;text-transform:uppercase;font-weight:600}
+.progress-bar{background:#0a1220;height:8px;border-radius:4px;overflow:hidden;margin:10px 0;border:1px solid #1e2a44}
+.progress-bar>div{height:100%;background:#22c55e;transition:width .5s}
+.login-box{max-width:400px;margin:50px auto;background:#111a2e;padding:30px;border-radius:16px;border:1px solid #1e2a44}
+.login-box h2{text-align:center;margin-bottom:16px}
+.login-box input{width:100%;padding:12px;margin:8px 0;background:#0a1220;border:1.5px solid #1e2a44;border-radius:9px;color:#e8eef7;font-size:.95rem;font-family:inherit}
+.login-box input:focus{outline:none;border-color:#22c55e}
+.login-box button{width:100%;margin-top:12px;padding:13px}
+.locked{text-align:center;padding:40px 20px;background:#0d1424;border-radius:14px;border:2px dashed #2a3a5c}
+.locked .icon{font-size:3.5em;margin-bottom:14px;opacity:.6}
+.locked h3{color:#fbbf24;font-size:1.2rem;margin:0 0 8px}
+.locked p{color:#94a3b8;font-size:.9rem}
+.locked .bar{width:180px;height:6px;background:#0a1220;border-radius:3px;margin:14px auto;overflow:hidden;border:1px solid #1e2a44}
+.locked .bar>div{height:100%;background:#22c55e}
+.cert{background:#052e16;padding:36px 26px;border-radius:14px;border:3px double #22c55e;text-align:center}
+.cert .seal{width:70px;height:70px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;font-size:1.9rem;margin:0 auto 16px;border:3px solid #bbf7d0}
+.cert .sub{color:#4ade80;font-size:.72rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:800;margin-bottom:6px}
+.cert .title{font-family:Georgia,serif;font-size:1.4rem;font-weight:700;color:#bbf7d0;margin:6px 0 16px}
+.cert .name{font-family:Georgia,serif;font-size:1.8rem;font-weight:700;color:#fff;padding:14px 0;border-bottom:2px solid #22c55e;border-top:2px solid #22c55e;margin:10px auto 18px;max-width:360px}
+.cert .details{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin:20px 0 16px;font-size:.82rem;color:#94a3b8}
+.cert .details div{text-align:center}
+.cert .details strong{color:#00d4ff;display:block;font-size:.95rem;margin-top:3px}
+.cert .id{font-family:monospace;font-size:.7rem;color:#64748b;padding:8px;background:rgba(0,0,0,.3);border-radius:5px;display:inline-block;margin-top:12px}
+.cert .sig{margin-top:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.cert .sig-block{text-align:center;flex:1;min-width:140px}
+.cert .sig-line{border-top:1px solid #94a3b8;padding-top:6px;font-size:.75rem;color:#94a3b8;margin-top:24px}
+.cert .sig-name{font-family:Georgia,serif;font-style:italic;color:#4ade80;font-size:1rem}
+.cv-box{background:#fff;color:#1a1a1a;border-radius:12px;padding:30px;margin-top:14px;line-height:1.6}
+.cv-box h1{color:#166534;font-size:1.6rem;margin-bottom:4px}
+.cv-box .role{color:#22c55e;font-weight:600;margin-bottom:14px}
+.cv-box h2{color:#166534;font-size:.85rem;text-transform:uppercase;letter-spacing:1px;border-bottom:1.5px solid #cbd5e1;padding-bottom:4px;margin:16px 0 8px}
+.cv-box ul{padding-left:20px;margin:6px 0}
+.cv-box li{color:#334155;font-size:.9rem;margin-bottom:3px}
+.cv-box .badge{display:inline-block;padding:2px 8px;background:#dcfce7;color:#166534;border-radius:10px;font-size:.75rem;font-weight:700;border:1px solid #bbf7d0;margin:2px}
+.tabs{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}
+.tab{padding:8px 14px;background:#0f1729;border-radius:8px;cursor:pointer;font-size:.82em;font-weight:600;color:#94a3b8;border:1.5px solid transparent}
+.tab.active{background:#22c55e;color:#052e16}
+.certs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;margin-top:12px}
+.cert-item{background:#0f1729;padding:14px;border-radius:10px;border-left:4px solid #22c55e}
+.cert-item.free{border-left-color:#22c55e}
+.cert-item.paid{border-left-color:#fbbf24}
+.cert-item h4{margin:0 0 5px;font-size:.9em;color:#e8eef7}
+.cert-item .org{font-size:.72em;color:#94a3b8;margin-bottom:8px}
+.cert-item .tag{display:inline-block;padding:2px 8px;border-radius:16px;font-size:.66em;font-weight:700;margin-right:3px;margin-bottom:3px}
+.cert-item .tag.free{background:rgba(34,197,94,.15);color:#86efac}
+.cert-item .tag.paid{background:rgba(251,191,36,.15);color:#fde68a}
+.cert-item .tag.lvl{background:rgba(59,130,246,.15);color:#93c5fd}
+.cert-item p{font-size:.78em;color:#cbd5e1;margin:6px 0}
+.cert-item a{display:inline-block;padding:5px 10px;background:#1a2540;color:#00d4ff;border-radius:6px;font-size:.74em;font-weight:700;border:1px solid #2a3a5c;margin-top:6px}
+.jobs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:12px}
+.job{background:#0f1729;padding:14px;border-radius:10px;border-left:4px solid #22c55e}
+.job h4{margin:0 0 4px;color:#86efac;font-size:.9em}
+.job .org{font-size:.75em;color:#94a3b8;margin-bottom:6px}
+.job p{font-size:.8em;color:#cbd5e1;margin:6px 0}
+.job a{display:inline-block;padding:5px 12px;background:#1a2540;color:#00d4ff;border-radius:6px;font-size:.76em;font-weight:700;margin-top:6px;border:1px solid #2a3a5c}
+.exam{background:#052e16;padding:16px;border-radius:12px;margin:10px 0;border-left:4px solid #22c55e}
+.exam h4{color:#bbf7d0;margin:0 0 6px;font-size:.98rem}
+.exam.locked{opacity:.55;border-left-color:#475569}
+.exam.passed{background:#0d3a1f;border-left-color:#22c55e}
+.exam.passed h4{color:#86efac}
+.sync-box{background:#0a1220;padding:14px;border-radius:10px;margin:10px 0;border:1px solid #1e2a44}
+.sync-box textarea{width:100%;min-height:100px;background:#050914;color:#00d4ff;border:1px solid #1e2a44;border-radius:6px;padding:10px;font-family:monospace;font-size:.7em;resize:vertical;word-break:break-all}
+.sync-box label{display:block;margin:6px 0 4px;color:#94a3b8;font-size:.82em;font-weight:600}
+.today{list-style:none;padding:0;margin:10px 0}
+.today li{padding:10px 12px;background:#0f1729;border-radius:6px;margin-bottom:6px;border-left:3px solid #22c55e;font-size:.87em;color:#cbd5e1}
+footer{text-align:center;padding:24px 20px;color:#64748b;font-size:.8em;font-weight:600;border-top:1px solid #1e2a44;margin-top:32px}
+#ver{position:fixed;bottom:8px;right:8px;background:#052e16;color:#4ade80;font-family:monospace;font-size:.7em;padding:4px 8px;border-radius:4px;border:1px solid #22c55e;z-index:999}
+#err{position:fixed;bottom:8px;left:8px;background:#3a0f0f;color:#fca5a5;font-family:monospace;font-size:.68em;padding:4px 8px;border-radius:4px;border:1px solid #ef4444;display:none;max-width:80%;z-index:999}
+@media print{header,footer,.nav,#ver,#err,.tabs,button{display:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" onclick="go('home')">🦠 Mon Drôle Parcours · Niveau 7</div>
+  <div class="hs" id="hs"></div>
+</header>
+<main id="app"></main>
+<footer>© H. N'GUESSAN ® — Niveau 7 · Analyse malware</footer>
+<div id="ver">v7.0 chargé ✓</div>
+<div id="err"></div>
+
+<script>
+window.addEventListener('error', function(e) {
+  var el = document.getElementById('err');
+  if (el) { el.style.display = 'block'; el.textContent = 'ERREUR: ' + e.message; }
+});
+
+var KEY = 'mdpc_v70';
+var state = { currentUser: null, users: {} };
+try { var raw = localStorage.getItem(KEY); if (raw) state = JSON.parse(raw); } catch (e) {}
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} header(); }
+function user() { return state.currentUser ? state.users[state.currentUser] : null; }
+function mkUser(n) { return { name: n, done: {}, certs: [], examens: {}, jours: {}, created: new Date().toISOString().slice(0,10) }; }
+function today() { return new Date().toISOString().slice(0,10); }
+
+function countDone(lvl) {
+  var u = user(); if (!u) return 0;
+  var c = 0, p = lvl + '_';
+  for (var k in u.done) { if (k.indexOf(p) === 0 && u.done[k]) c++; }
+  return c;
+}
+function isComplete(lvl) { return countDone(lvl) >= 10; }
+function isUnlocked(lvl) { if (lvl === 1) return true; return isComplete(lvl - 1); }
+
+function simulate() {
+  var u = user(); if (!u) return;
+  for (var i = 1; i <= 10; i++) {
+    u.done['1_'+i]=true; u.done['2_'+i]=true; u.done['3_'+i]=true;
+    u.done['4_'+i]=true; u.done['5_'+i]=true; u.done['6_'+i]=true;
+  }
+  save();
+  alert('N1-N6 simulés. Niveau 7 débloqué !');
+  route();
+}
+
+function login() {
+  var el = document.getElementById('loginName'); if (!el) return;
+  var n = el.value.trim(); if (!n) { alert('Entre ton prénom'); return; }
+  var k = n.toLowerCase().replace(/\s+/g, '_');
+  if (!state.users[k]) state.users[k] = mkUser(n);
+  state.currentUser = k; save(); go('home');
+}
+function logout() { state.currentUser = null; save(); go('login'); }
+function go(h) { location.hash = h; }
+
+/* ============================================================
+   10 DÉFIS — Analyse malware
+   ============================================================ */
+var DEFIS = [
+{id:1, titre:"Introduction à l analyse malware", intro:"Un malware est un programme malveillant. Comprendre ses types et son fonctionnement est essentiel pour le combattre.",
+cours:"<h3>Qu est-ce qu un malware</h3><p><strong>Malware</strong> = logiciel conçu pour nuire : voler des données, chiffrer des fichiers, espionner, prendre le contrôle.</p><h3>Les types principaux</h3><table><tr><th>Type</th><th>Description</th></tr><tr><td><strong>Virus</strong></td><td>Se fixe à un fichier, se propage à l exécution</td></tr><tr><td><strong>Ver (worm)</strong></td><td>Se propage seul sur le réseau</td></tr><tr><td><strong>Trojan</strong></td><td>Se déguise en logiciel légitime</td></tr><tr><td><strong>Ransomware</strong></td><td>Chiffre les fichiers, demande rançon</td></tr><tr><td><strong>Spyware</strong></td><td>Espionne (frappes, écran, réseau)</td></tr><tr><td><strong>Rootkit</strong></td><td>Cache sa présence, modifie le kernel</td></tr><tr><td><strong>Botnet</strong></td><td>Réseau de machines zombie contrôlées</td></tr><tr><td><strong>Keylogger</strong></td><td>Enregistre les frappes clavier</td></tr><tr><td><strong>Adware</strong></td><td>Affiche publicités malveillantes</td></tr><tr><td><strong>Cryptominer</strong></td><td>Mine crypto en arrière-plan</td></tr></table><h3>Objectifs</h3><ul><li>Voler données bancaires / identifiants</li><li>Chiffrer contre rançon (ransomware)</li><li>Espionner (nation-state, espionnage industriel)</li><li>Détruire (sabotage, cyberattaque)</li><li>Miner crypto (financier)</li></ul><div class=\"box\">Un malware = un cambrioleur déguisé. Il entre par une porte (vulnérabilité), se cache (rootkit), agit (vol/chiffrement), sort (exfiltration).</div><div class=\"bank\">Les banques sont ciblées par ransomwares, trojans bancaires (Zeus, Emotet) et APT (Advanced Persistent Threats).</div><div class=\"warn\">Un utilisateur averti bloque 80% des infections : ne pas cliquer sur les pièces jointes, vérifier les URLs, MFA.</div>",
+cas:"<h3>Cas 1 — Classifier un échantillon</h3><p>Analyser un fichier suspect avec <code>file</code> :</p><pre>file suspect.exe\nstrings suspect.exe | head -30</pre><p>Résultat : PE32 executable = Windows. Strings révèlent des URLs, IPs, noms de fonctions.</p><h3>Cas 2 — Reconnaître un ransomware</h3><p>Fichiers avec extension bizarre (.encrypted, .locked, .crypt), message rançon README.txt. Chiffrement AES+RSA. Demande BTC.</p><h3>Cas 3 — Reconnaître un cryptominer</h3><p>CPU 100% sans raison. Processus xmrig, minerd. Connexion à des pools de mining (pool.minexmr.com).</p>",
+quiz:[
+{q:'Un ransomware fait quoi ?',o:['Vole identifiants','Chiffre fichiers + rançon','Espionne','Mine crypto'],c:1,e:'Chiffrement + rançon.'},
+{q:'Un rootkit sert à ?',o:['Se cacher + modifier kernel','Chiffrer','Miner','Voler cookies'],c:0,e:'Furtivité.'}
+]},
+
+{id:2, titre:"Environnement d analyse sécurisé", intro:"Analyser un malware = manipuler du code dangereux. Il faut un environnement isolé (sandbox).",
+cours:"<h3>Pourquoi une sandbox</h3><p>Un malware peut s exécuter, se propager, contacter son C2. En sandbox, on l empêche de nuire.</p><h3>Types de sandbox</h3><ul><li><strong>VM</strong> — VirtualBox, VMware, Hyper-V</li><li><strong>Conteneur</strong> — Docker (moins isolé)</li><li><strong>Sandbox cloud</strong> — Any.run, Hybrid Analysis, Joe Sandbox</li><li><strong>Machine physique dédiée</strong> — air-gap, aucune connexion</li></ul><h3>Configuration recommandée</h3><ul><li><strong>Aucune connexion au réseau réel</strong> — réseau host-only ou NAT isolé</li><li><strong>Snapshot avant analyse</strong> — rollback après</li><li><strong>Outils pré-installés</strong> — REMnux (Linux), FlareVM (Windows)</li><li><strong>Faux services réseau</strong> — INetSim simule DNS, HTTP, SMTP</li><li><strong>Journalisation</strong> — capture réseau, monitoring fichiers, registre</li></ul><h3>REMnux</h3><p>Distribution Linux dédiée à l analyse malware. Contient : Volatility, YARA, radare2, oledump, peepdf, CyberChef, etc.</p><h3>FlareVM</h3><p>VM Windows pré-configurée par Mandiant. Contient : IDA Free, x64dbg, PEiD, Process Hacker, Wireshark, etc.</p><div class=\"box\">Analyser un malware = manipuler une bombe. Sandbox = bunker anti-explosion. Air-gap = bunker isolé.</div><div class=\"bank\">Banques : toute analyse malware passe par une sandbox isolée, jamais sur un poste de travail.</div><div class=\"warn\">Jamais analyser sur un PC personnel non isolé. Jamais connecter la sandbox au réseau de l entreprise.</div>",
+cas:"<h3>Cas 1 — Créer une VM isolée</h3><ol><li>VirtualBox → Nouvelle VM → Windows 10 ou Ubuntu</li><li>Configuration réseau : Host-only adapter (pas de NAT)</li><li>Snapshot avant exécution</li><li>Prendre un snapshot « vierge » et un snapshot « après analyse »</li></ol><h3>Cas 2 — INetSim</h3><pre>sudo inetsim</pre><p>Simule DNS, HTTP, SMTP. Le malware croit avoir Internet. On capture toutes ses requêtes.</p><h3>Cas 3 — Snapshot rollback</h3><p>Après analyse : restauration du snapshot → machine propre → prête pour nouvel échantillon.</p>",
+quiz:[
+{q:'Sandbox sert à ?',o:['Accélérer','Isoler le malware','Chiffrer','Router'],c:1,e:'Isolation.'},
+{q:'REMnux est ?',o:['Antivirus','Linux pour analyse malware','Pare-feu','Scanner réseau'],c:1,e:'Distro Linux.'}
+]},
+
+{id:3, titre:"Analyse statique de base", intro:"Analyser un binaire SANS l exécuter. Extraire un maximum d infos sur ce qu il fait.",
+cours:"<h3>Principe</h3><p><strong>Analyse statique</strong> = examiner le fichier sans l exécuter. Aucun risque d infection.</p><h3>Outils essentiels</h3><table><tr><th>Outil</th><th>Usage</th></tr><tr><td>file</td><td>Type de fichier</td></tr><tr><td>strings</td><td>Chaînes lisibles</td></tr><tr><td>xxd / hexdump</td><td>Vue hexadécimale</td></tr><tr><td>md5sum / sha256sum</td><td>Empreintes</td></tr><tr><td>pefile (Python)</td><td>Analyse PE Windows</td></tr><tr><td>PEiD</td><td>Détection packer</td></tr><tr><td>Detect It Easy</td><td>Identifier compilateur/packer</td></tr><tr><td>objdump</td><td>Désassemblage</td></tr><tr><td>radare2</td><td>Reverse engineering</td></tr><tr><td>strings.fr</td><td>Version française</td></tr></table><h3>Commandes clés</h3><pre>file suspect.exe\nstrings -n 8 suspect.exe\nmd5sum suspect.exe\nsha256sum suspect.exe\nxxd suspect.exe | head -20</pre><h3>Ce qu on cherche dans strings</h3><ul><li><strong>URLs</strong> — serveur C2</li><li><strong>Adresses IP</strong></li><li><strong>Noms de registre</strong> — persistance</li><li><strong>Noms de fichiers</strong> — cibles</li><li><strong>Mots-clés</strong> — bitcoin, ransom, encrypt, password</li><li><strong>User-Agents</strong></li><li><strong>Noms de fonctions API</strong> — CreateProcess, URLDownloadToFile</li></ul><div class=\"box\">Analyse statique = lire le code source d une bombe. Sans la faire exploser.</div><div class=\"bank\">Un analyste bancaire commence TOUJOURS par strings. Souvent suffisant pour identifier une famille (Emotet, Qakbot).</div><div class=\"warn\">Un binaire packé affiche peu de strings. Il faut alors le dépacker (analyse dynamique) ou utiliser des techniques avancées.</div>",
+cas:"<h3>Cas 1 — Analyse d un suspect.exe</h3><pre>file suspect.exe\n→ PE32 executable (GUI) Intel 80386, for MS Windows\n\nstrings suspect.exe | grep -i http\n→ http://malicious-c2.xyz/gate.php\n\nstrings suspect.exe | grep -i bitcoin\n→ Bitcoin wallet found</pre><p>Conclusion : trojan bancaire communiquant avec un C2.</p><h3>Cas 2 — Détecter un packer</h3><pre>Die (Detect It Easy) → suspect.exe\n→ UPX 3.96 (packer connu)\n\nupx -d suspect.exe -o unpacked.exe</pre><p>Le binaire a été dépacké → strings donne plus d infos.</p><h3>Cas 3 — Hash lookup</h3><pre>sha256sum suspect.exe\n→ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</pre><p>Rechercher sur VirusTotal : si déjà connu, résultat immédiat.</p>",
+quiz:[
+{q:'Analyse statique ?',o:['Sans exécuter','Avec exécution','En sandbox','En live'],c:0,e:'Sans exécuter.'},
+{q:'strings sert à ?',o:['Chiffrer','Extraire chaînes','Router','Hasher'],c:1,e:'Chaînes lisibles.'}
+]},
+
+{id:4, titre:"Analyse dynamique — Sandbox et monitoring", intro:"Exécuter le malware dans une sandbox en observant TOUT ce qu il fait.",
+cours:"<h3>Principe</h3><p><strong>Analyse dynamique</strong> = exécuter dans un environnement isolé en surveillant chaque action.</p><h3>Ce qu on observe</h3><ul><li><strong>Processus</strong> — création, injection, terminaison</li><li><strong>Fichiers</strong> — création, modification, suppression</li><li><strong>Registre</strong> — persistance, configuration</li><li><strong>Réseau</strong> — connexions, DNS, HTTP</li><li><strong>Mémoire</strong> — code injecté, chaînes en clair</li></ul><h3>Outils de monitoring</h3><table><tr><th>Outil</th><th>Usage</th></tr><tr><td>Process Monitor (Procmon)</td><td>Fichiers, registre, processus en temps réel</td></tr><tr><td>Process Hacker / System Informer</td><td>Processus avancés, injections</td></tr><tr><td>Wireshark</td><td>Capture réseau</td></tr><tr><td>Fiddler</td><td>Proxy HTTP/HTTPS</td></tr><tr><td>Regshot</td><td>Diff registre avant/après</td></tr><tr><td>API Monitor</td><td>Appels API Windows</td></tr><tr><td>x64dbg</td><td>Debugger</td></tr></table><h3>Sandboxes en ligne</h3><ul><li><strong>Any.run</strong> — interactif, gratuit en limité</li><li><strong>Hybrid Analysis</strong> — rapport détaillé gratuit</li><li><strong>Joe Sandbox</strong> — payant, très complet</li><li><strong>VirusTotal</strong> — sandbox intégrée (gratuit)</li></ul><div class=\"box\">Analyse dynamique = regarder la bombe exploser dans un bunker. On note chaque fragment, chaque fumée, chaque bruit.</div><div class=\"bank\">Une sandbox bancaire doit être déconnectée du réseau réel. C2 simulé, DNS contrôlé, aucun accès externe.</div><div class=\"warn\">Un malware évolué détecte la sandbox (VM, timers, debugger). Techniques : délai, détection VMware, refus d exécution.</div>",
+cas:"<h3>Cas 1 — Procmon</h3><ol><li>Lancer Procmon avant le malware</li><li>Exécuter le malware</li><li>Filtrer par ProcessName = suspect.exe</li><li>Observer : CreateFile (fichiers créés), RegSetValue (persistance), ProcessCreate (child processes)</li></ol><h3>Cas 2 — Wireshark</h3><ol><li>Lancer capture sur l interface virtuelle</li><li>Exécuter le malware</li><li>Filtrer : dns, http, tcp.port==443</li><li>Identifier : domaine C2, User-Agent, données exfiltrées</li></ol><h3>Cas 3 — Any.run</h3><p>Uploader le binaire sur any.run. Rapport automatique : processus, réseau, MITRE ATT&amp;CK, screenshots.</p>",
+quiz:[
+{q:'Analyse dynamique ?',o:['Sans exécuter','Exécution observée','En lecture seule','Hash'],c:1,e:'Exécution.'},
+{q:'Procmon surveille ?',o:['Fichiers/registre/processus','Réseau seul','Mémoire seule','CPU'],c:0,e:'Tout.'}
+]},
+
+{id:5, titre:"Analyse de fichiers PE (Windows)", intro:"La majorité des malwares Windows sont des fichiers PE (Portable Executable). Comprendre leur structure est essentiel.",
+cours:"<h3>Structure d un PE</h3><ul><li><strong>DOS Header</strong> — signature MZ (0x4D5A)</li><li><strong>DOS Stub</strong> — « This program cannot be run in DOS mode »</li><li><strong>PE Header</strong> — signature PE + infos machine</li><li><strong>Optional Header</strong> — point d entrée, sections</li><li><strong>Sections</strong> — code (.text), données (.data), ressources (.rsrc)</li></ul><h3>Sections typiques</h3><table><tr><th>Section</th><th>Contenu</th></tr><tr><td>.text</td><td>Code exécutable</td></tr><tr><td>.data</td><td>Données initialisées</td></tr><tr><td>.rdata</td><td>Données en lecture seule (strings)</td></tr><tr><td>.rsrc</td><td>Ressources (icônes, dialogues)</td></tr><tr><td>.reloc</td><td>Relocations</td></tr></table><h3>Anomalies suspectes</h3><ul><li><strong>Entry point</strong> dans une section inhabituelle (.rsrc, .data)</li><li><strong>Sections</strong> avec noms bizarres (.upx0, .packed, .xyz)</li><li><strong>Entropie élevée</strong> (chiffré ou packé)</li><li><strong>Peu d imports</strong> (packé)</li><li><strong>Imports suspects</strong> : VirtualAlloc, WriteProcessMemory, CreateRemoteThread, URLDownloadToFile, WinExec</li><li><strong>Pas de signature</strong> numérique</li><li><strong>Timestamp</strong> incohérent</li></ul><h3>Outils</h3><ul><li><strong>PEview</strong> — visualiser la structure</li><li><strong>PEStudio</strong> — analyse automatique</li><li><strong>CFF Explorer</strong> — éditeur</li><li><strong>Detect It Easy (DIE)</strong> — packer/compilateur</li><li><strong>pefile (Python)</strong> — analyse programmatique</li></ul><h3>Réseau et persistance</h3><ul><li>Imports réseau : WinINet, WinHTTP, socket</li><li>Imports registre : RegOpenKey, RegSetValue</li><li>Imports processus : CreateProcess, ShellExecute</li></ul><div class=\"box\">Un PE = un livre. Le DOS header = couverture. Le PE header = sommaire. Les sections = chapitres. Un malware = un livre piégé.</div><div class=\"bank\">Banques : toute analyse PE commence par vérifier la signature numérique. Un binaire non signé = suspect.</div><div class=\"warn\">Un PE peut être packé (UPX, Themida, VMProtect). Il faut le dépacker avant analyse.</div>",
+cas:"<h3>Cas 1 — PEStudio</h3><ol><li>Charger suspect.exe dans PEStudio</li><li>Onglet Indicators : score de suspicion</li><li>Onglet Imports : API suspectes</li><li>Onglet Strings : URLs, IPs</li><li>Onglet Sections : entropie, noms</li></ol><h3>Cas 2 — pefile (Python)</h3><pre>import pefile\npe = pefile.PE('suspect.exe')\nprint(pe.OPTIONAL_HEADER.AddressOfEntryPoint)\nfor section in pe.sections:\n    print(section.Name, section.get_entropy())</pre><h3>Cas 3 — Détecter un packer</h3><pre>diec suspect.exe</pre><p>Résultat : UPX, Themida, VMProtect. Si packé, tenter upx -d ou analyse dynamique.</p>",
+quiz:[
+{q:'Un PE est un fichier ?',o:['Linux','Windows exécutable','PDF','ZIP'],c:1,e:'Windows.'},
+{q:'Entropie élevée signifie ?',o:['Fichier simple','Chiffré/packé','Vide','Corrompu'],c:1,e:'Chiffrement.'}
+]},
+
+{id:6, titre:"Analyse de mémoire (forensics RAM)", intro:"Un malware peut vivre uniquement en mémoire. Analyser la RAM révèle ce que le disque cache.",
+cours:"<h3>Pourquoi la RAM</h3><ul><li><strong>Malware fileless</strong> — jamais écrit sur disque</li><li><strong>Clés de chiffrement</strong> — en mémoire pendant l exécution</li><li><strong>Processus cachés</strong> — rootkits</li><li><strong>Connexions réseau</strong> — C2 actifs</li><li><strong>Mots de passe</strong> — en clair</li></ul><h3>Capturer la RAM</h3><ul><li><strong>Windows</strong> : DumpIt, FTK Imager, WinPmem</li><li><strong>Linux</strong> : LiME, /proc/kcore</li><li><strong>VM</strong> : VMware (snapshot mémoire), VirtualBox (dump)</li></ul><h3>Volatility</h3><p>Framework open source d analyse mémoire. Version 3 (Volatility3) est la plus récente.</p><pre>vol.py -f memory.dmp imageinfo\nvol.py -f memory.dmp --profile=Win10x64 pslist\nvol.py -f memory.dmp --profile=Win10x64 netscan\nvol.py -f memory.dmp --profile=Win10x64 cmdline\nvol.py -f memory.dmp --profile=Win10x64 hashdump\nvol.py -f memory.dmp --profile=Win10x64 malfind</pre><h3>Commandes clés</h3><table><tr><th>Commande</th><th>Usage</th></tr><tr><td>imageinfo</td><td>Profil de l OS</td></tr><tr><td>pslist</td><td>Processus actifs</td></tr><tr><td>pstree</td><td>Arbre processus</td></tr><tr><td>netscan</td><td>Connexions réseau</td></tr><tr><td>cmdline</td><td>Ligne de commande</td></tr><tr><td>malfind</td><td>Code injecté suspect</td></tr><tr><td>hashdump</td><td>Hashs Windows</td></tr><tr><td>dlllist</td><td>DLLs chargées</td></tr><tr><td>handles</td><td>Fichiers ouverts</td></tr></table><div class=\"box\">La RAM = scène de crime. Volatility = les experts. Le malware laisse des traces partout, même s il a effacé ses fichiers.</div><div class=\"bank\">Après un incident ransomware, la RAM contient souvent la clé de chiffrement et l IP de l attaquant.</div><div class=\"warn\">Capturer la RAM IMMÉDIATEMENT après un incident. Chaque seconde d utilisation écrase les preuves.</div>",
+cas:"<h3>Cas 1 — Détecter un processus caché</h3><pre>vol.py -f memory.dmp pslist\nvol.py -f memory.dmp psscan\nvol.py -f memory.dmp pstree</pre><p>Comparer pslist et psscan : un processus dans psscan mais pas pslist = rootkit qui se cache.</p><h3>Cas 2 — Trouver un C2</h3><pre>vol.py -f memory.dmp netscan | grep ESTABLISHED</pre><p>Identifier connexions actives vers IPs suspectes. Corréler avec VirusTotal.</p><h3>Cas 3 — malfind</h3><pre>vol.py -f memory.dmp malfind</pre><p>Détecte code injecté en mémoire. Signature MZ dans régions non exécutables = injection probable.</p>",
+quiz:[
+{q:'Volatility analyse ?',o:['Disque','Mémoire RAM','Réseau','CPU'],c:1,e:'RAM.'},
+{q:'Malware fileless ?',o:['Sur disque','Uniquement en mémoire','Dans BIOS','Dans DNS'],c:1,e:'Fileless.'}
+]},
+
+{id:7, titre:"Reverse engineering basique", intro:"Désassembler un malware permet de comprendre précisément ce qu il fait. C est l analyse la plus profonde.",
+cours:"<h3>Assembleur — les bases</h3><table><tr><th>Instruction</th><th>Action</th></tr><tr><td>MOV</td><td>Copier valeur</td></tr><tr><td>PUSH/POP</td><td>Empiler/dépiler</td></tr><tr><td>CALL</td><td>Appeler fonction</td></tr><tr><td>JMP</td><td>Sauter</td></tr><tr><td>JE/JNE</td><td>Sauter si égal/différent</td></tr><tr><td>ADD/SUB</td><td>Additionner/soustraire</td></tr><tr><td>XOR</td><td>XOR bit à bit (chiffrement simple)</td></tr><tr><td>CMP</td><td>Comparer</td></tr></table><h3>Architecture x86/x64</h3><ul><li><strong>Registres</strong> : EAX (x86) / RAX (x64) accum, EBX base, ECX compteur, EDX données</li><li><strong>Stack</strong> : ESP (x86) / RSP (x64) — pile</li><li><strong>Instruction Pointer</strong> : EIP (x86) / RIP (x64) — adresse courante</li></ul><h3>Outils</h3><ul><li><strong>IDA Free</strong> — désassembleur référence</li><li><strong>Ghidra</strong> — gratuit NSA, décompilateur</li><li><strong>radare2</strong> — CLI puissant</li><li><strong>x64dbg</strong> — debugger Windows</li><li><strong>Binary Ninja</strong> — commercial</li></ul><h3>Workflow</h3><ol><li>Ouvrir le binaire dans Ghidra ou IDA</li><li>Identifier main / WinMain</li><li>Suivre les appels aux API (Imports)</li><li>Analyser les fonctions suspectes</li><li>Renommer les fonctions comprises</li><li>Reconstruire la logique</li></ol><h3>Patterns courants</h3><ul><li><strong>String obfuscation</strong> — chaînes chiffrées, décodées à l exécution</li><li><strong>Anti-debug</strong> — IsDebuggerPresent, timing checks</li><li><strong>Anti-VM</strong> — détection VMware, VirtualBox</li><li><strong>Persistence</strong> — écriture dans Run registry</li><li><strong>Injection</strong> — VirtualAllocEx + WriteProcessMemory + CreateRemoteThread</li></ul><div class=\"box\">Reverse engineering = démonter un moteur pièce par pièce pour comprendre comment il fonctionne. Le malware est le moteur.</div><div class=\"bank\">Les analystes bancaires RE démantèlent les trojans bancaires (Trickbot, Dridex) pour en extraire les IoC (Indicators of Compromise).</div><div class=\"warn\">Le RE demande des semaines pour un débutant. Commencer par Ghidra sur des crackmes simples.</div>",
+cas:"<h3>Cas 1 — Ghidra</h3><ol><li>Créer un projet</li><li>Importer le binaire</li><li>Analyser automatiquement (Analyze → Auto Analyze)</li><li>Chercher les imports suspects</li><li>Double-cliquer sur les fonctions</li><li>Utiliser la vue decompiler (C-like)</li></ol><h3>Cas 2 — Détecter une persistance</h3><p>Chercher dans Ghidra les appels à <code>RegSetValueEx</code> avec comme chemin « Software\\Microsoft\\Windows\\CurrentVersion\\Run ». C est le point de persistance.</p><h3>Cas 3 — Analyser un chiffrement</h3><p>Boucle XOR avec une clé en dur. Ghidra affiche : <code>data[i] ^= 0x42</code>. En extraire la clé et décoder les strings.</p>",
+quiz:[
+{q:'IDA/Ghidra servent à ?',o:['Compiler','Désassembler','Router','Chiffrer'],c:1,e:'Désassemblage.'},
+{q:'Persistence via registre ?',o:['Run key','HKEY_USERS','SAM','DNS'],c:0,e:'Run.'}
+]},
+
+{id:8, titre:"IoC et Threat Intelligence", intro:"IoC = Indicator of Compromise. Signature technique qui permet de détecter un malware connu.",
+cours:"<h3>Qu est-ce qu un IoC</h3><p><strong>IoC</strong> = artefact observable qui indique une compromission. Utilisé pour détecter un malware déjà identifié.</p><h3>Types d IoC</h3><table><tr><th>Type</th><th>Exemple</th></tr><tr><td><strong>Hash</strong></td><td>SHA-256 du binaire</td></tr><tr><td><strong>Domaines</strong></td><td>malicious-c2.xyz</td></tr><tr><td><strong>IPs</strong></td><td>185.x.x.x (C2)</td></tr><tr><td><strong>URLs</strong></td><td>http://malicious-c2.xyz/gate.php</td></tr><tr><td><strong>Filename</strong></td><td>invoice.pdf.exe</td></tr><tr><td><strong>Registry key</strong></td><td>HKLM\\...\\Run\\malware</td></tr><tr><td><strong>Mutex</strong></td><td>Global\\MalwareMutex</td></tr><tr><td><strong>User-Agent</strong></td><td>MalwareBot/1.0</td></tr></table><h3>Sources de threat intel</h3><ul><li><strong>VirusTotal</strong> — analyse multi-antivirus</li><li><strong>MISP</strong> — plateforme de partage</li><li><strong>AlienVault OTX</strong> — open threat exchange</li><li><strong>Abuse.ch</strong> — URLhaus, MalwareBazaar, ThreatFox</li><li><strong>Shodan</strong> — C2 exposés</li><li><strong>URLhaus</strong> — URLs malveillantes</li><li><strong>Feodo Tracker</strong> — C2 bancaires</li></ul><h3>MITRE ATT&amp;CK</h3><p>Framework qui catalogue les techniques d attaques (Tactic, Technique, Procedure).</p><ul><li><strong>Tactic</strong> — objectif (Initial Access, Persistence, Exfiltration)</li><li><strong>Technique</strong> — comment (T1059 PowerShell)</li><li><strong>Procedure</strong> — implémentation spécifique</li></ul><h3>Utilisation en banque</h3><ul><li>SIEM intègre les IoC (règles de détection)</li><li>EDR détecte les binaires via hash</li><li>Pare-feu bloque les IPs C2</li><li>DNS sinkhole les domaines malveillants</li></ul><div class=\"box\">Un IoC = une empreinte digitale. Si un fichier/connexion a la même empreinte, c est probablement le même criminel.</div><div class=\"bank\">Les banques partagent leurs IoC au sein du FS-ISAC (Financial Services Information Sharing and Analysis Center).</div><div class=\"warn\">Un IoC est périssable. Un domaine C2 change souvent. Toujours combiner plusieurs IoC.</div>",
+cas:"<h3>Cas 1 — VirusTotal</h3><ol><li>Aller sur virustotal.com</li><li>Uploader le binaire (ou coller son hash)</li><li>Voir : détections (70/72), famille (Emotet, Trickbot), IoCs</li><li>Onglet Relations : domaines, IPs contactés</li></ol><h3>Cas 2 — Chercher sur MISP</h3><p>Requête par hash SHA-256. Résultat : événement, attributs (IPs, domaines), contexte.</p><h3>Cas 3 — Créer une règle YARA</h3><pre>rule BankTrojan {\n    strings:\n        $c2 = \"malicious-c2.xyz\"\n        $marker = \"BankTrojan\"\n    condition:\n        $c2 or $marker\n}</pre><p>YARA scanne les fichiers pour détecter ces signatures. Intégré dans la plupart des EDR.</p>",
+quiz:[
+{q:'IoC signifie ?',o:['Indicators of Compromise','Internet of Code','Index of Content','Initial of Crime'],c:0,e:'Compromise.'},
+{q:'MITRE ATT&CK ?',o:['Antivirus','Framework techniques attaque','Pare-feu','Langage'],c:1,e:'Tactics/Techniques.'}
+]},
+
+{id:9, titre:"Réponse à incident — Ransomware", intro:"Quand un ransomware frappe, chaque minute compte. Procédure de réponse structurée.",
+cours:"<h3>Les 6 phases</h3><ol><li><strong>Détection</strong> — alerte EDR, utilisateurs bloqués, fichiers chiffrés</li><li><strong>Confinement</strong> — isoler les machines, couper le réseau</li><li><strong>Éradication</strong> — supprimer le malware, désactiver les comptes compromis</li><li><strong>Rétablissement</strong> — restaurer depuis sauvegardes saines</li><li><strong>Leçons apprises</strong> — post-mortem, amélioration</li><li><strong>Communication</strong> — clients, autorités, presse</li></ol><h3>Actions immédiates</h3><ul><li><strong>Isoler</strong> physiquement les machines infectées (débrancher le réseau)</li><li><strong>Ne PAS éteindre</strong> les machines (RAM = preuves)</li><li><strong>Photographier</strong> les écrans (message de rançon)</li><li><strong>Noter</strong> l heure, les fichiers affectés</li><li><strong>Débrancher</strong> les sauvegardes connectées (NAS)</li><li><strong>Alerter</strong> le RSSI, la direction, l assurance cyber</li></ul><h3>Ce qu il NE faut PAS faire</h3><ul><li>Payer la rançon (40% des payeurs ne récupèrent rien)</li><li>Redémarrer (l OS peut finir de chiffrer)</li><li>Continuer à utiliser les machines</li><li>Cacher l incident</li><li>Négocier seul</li></ul><h3>Investigation post-incident</h3><ul><li>Comment le malware est entré ? (phishing, RDP, VPN, supply chain)</li><li>Quand ? (timestamp du premier fichier chiffré)</li><li>Qui ? (IP source, comptes utilisés)</li><li>Quoi ? (données exfiltrées avant chiffrement ?)</li></ul><h3>Prévention</h3><ul><li>Sauvegarde 3-2-1 + immutable</li><li>MFA partout</li><li>EDR + SIEM 24/7</li><li>Segmentation réseau</li><li>Patch management</li><li>Sensibilisation utilisateurs</li></ul><div class=\"box\">Un ransomware = une inondation. Confiner = fermer les vannes. Éradiquer = pomper l eau. Rétablir = reconstruire. Apprendre = mieux drainer.</div><div class=\"bank\">BCEAO impose une notification d incident sous 72h. Non-notification = amende.</div><div class=\"warn\">Payer la rançon finance le crime organisé et n assure PAS la récupération.</div>",
+cas:"<h3>Cas 1 — Confinement d urgence</h3><ol><li>Débrancher physiquement le câble réseau du PC infecté</li><li>Désactiver son port switch</li><li>Isoler dans un VLAN</li><li>Changer les mots de passe des comptes administrateurs</li><li>Révoquer les sessions actives</li></ol><h3>Cas 2 — Restaurer depuis sauvegardes</h3><ol><li>Identifier la dernière sauvegarde saine (avant chiffrement)</li><li>Vérifier son intégrité (SHA256)</li><li>Restaurer sur machine propre</li><li>Scanner avec antivirus à jour</li><li>Reconnecter au réseau seulement après validation</li></ol><h3>Cas 3 — Notification BCEAO</h3><p>Selon la directive, notifier : nature de l incident, données affectées, mesures prises, plan de remédiation.</p>",
+quiz:[
+{q:'Face à un ransomware ?',o:['Payer','Isoler + ne pas payer','Redémarrer','Ignorer'],c:1,e:'Isoler.'},
+{q:'Sauvegarde 3-2-1 ?',o:['3 users,2 pass,1 admin','3 copies,2 supports,1 hors site','3 antivirus,2 pare-feu,1 VPN','Rien'],c:1,e:'3-2-1.'}
+]},
+
+{id:10, titre:"Analyse de cas réels — Emotet, Trickbot, Ryuk", intro:"Étude de 3 malwares qui ont fait tomber des milliers d entreprises et banques.",
+cours:"<h3>Emotet (2014-2021)</h3><ul><li><strong>Type</strong> : trojan bancaire, devenu malware-as-a-service</li><li><strong>Vecteur</strong> : emails phishing avec pièces jointes Word/Excel macro</li><li><strong>Fonction</strong> : loader (installe d autres malwares)</li><li><strong>Techniques</strong> : macros Office, PowerShell, obfuscation</li><li><strong>Impact</strong> : 1.6M+ machines infectées, 100k+ entreprises</li><li><strong>Fin</strong> : Europol a démantelé l infrastructure en 2021</li><li><strong>Retour</strong> : revenu en 2022</li></ul><h3>Trickbot (2016-2021)</h3><ul><li><strong>Type</strong> : trojan bancaire</li><li><strong>Vecteur</strong> : email phishing, malvertising, exploitation de failles</li><li><strong>Fonction</strong> : vol de credentials bancaires, reconnaissance réseau</li><li><strong>Techniques</strong> : injection dans navigateur (webinject), DGA (Domain Generation Algorithm)</li><li><strong>Impact</strong> : millions de machines, très utilisé par les gangs ransomware</li><li><strong>Fin</strong> : démantelé en 2021</li></ul><h3>Ryuk (2018-2021)</h3><ul><li><strong>Type</strong> : ransomware</li><li><strong>Vecteur</strong> : souvent précédé de Trickbot ou Emotet (chaîne d attaque)</li><li><strong>Fonction</strong> : chiffrement de fichiers + rançon</li><li><strong>Techniques</strong> : désactive sauvegardes, chiffre partages réseau, demande BTC</li><li><strong>Impact</strong> : 150M+ USD de rançons payées, hôpitaux, villes, banques</li><li><strong>Fin</strong> : les auteurs sont passés à Conti</li></ul><h3>Chaîne d attaque typique</h3><ol><li>Emotet arrive par phishing</li><li>Emotet installe Trickbot</li><li>Trickbot vole credentials + reconnaît le réseau</li><li>Trickbot installe Ryuk</li><li>Ryuk chiffre tout</li></ol><h3>Leçons</h3><ul><li>Les malwares collaborent (malware-as-a-service)</li><li>Un incident peut cacher une attaque plus large</li><li>La défense en profondeur est critique</li><li>Les gangs sont organisés comme des entreprises</li><li>Le partage d informations (IoC, threat intel) est vital</li></ul><div class=\"box\">Ces malwares = une équipe de cambrioleurs. Emotet ouvre la porte, Trickbot vole les bijoux, Ryuk brûle la maison.</div><div class=\"bank\">Des banques africaines ont subi des attaques via ces familles. Aucune n est immunisée.</div><div class=\"warn\">Le malware-as-a-service est un modèle économique : n importe qui peut louer un ransomware pour 50 USD.</div>",
+cas:"<h3>Cas 1 — Analyser un échantillon Emotet</h3><ol><li>Ouvrir le .doc en sandbox</li><li>Extraire la macro VBA (olevba)</li><li>Analyser la macro (souvent obfusquée)</li><li>Le VBA télécharge un binaire depuis une URL</li><li>Analyser le binaire téléchargé</li></ol><h3>Cas 2 — Chaîne Trickbot → Ryuk</h3><ol><li>Détecter Trickbot (IoC : domaines DGA, hash)</li><li>Si présent, alerter : Ryuk peut suivre</li><li>Isoler immédiatement le réseau</li><li>Chercher des traces de reconnaissance (ping, nmap)</li><li>Bloquer les tentatives de chiffrement</li></ol><h3>Cas 3 — Rapport post-incident</h3><p>Documenter : timeline, IOC, systèmes affectés, données exfiltrées, mesures prises, recommandations.</p>",
+quiz:[
+{q:'Emotet est ?',o:['Un antivirus','Un trojan loader','Un firewall','Un OS'],c:1,e:'Loader.'},
+{q:'Ryuk est ?',o:['Un ransomware','Un antivirus','Un VPN','Un hash'],c:0,e:'Ransomware.'}
+]}
+];
+
+var CERTS = [
+{id:'tryhackme-mal', nom:'Malware Analysis', org:'TryHackMe', free:true, niv:'Intermédiaire', lien:'https://tryhackme.com/module/malware-analysis', desc:'Labs analyse malware.'},
+{id:'cyberdef', nom:'CyberDefenders', org:'CyberDefenders', free:true, niv:'Intermédiaire', lien:'https://cyberdefenders.org/', desc:'Challenges blue team.'},
+{id:'letsdefend', nom:'LetsDefend', org:'LetsDefend', free:true, niv:'Intermédiaire', lien:'https://letsdefend.io/', desc:'Simulateur SOC.'},
+{id:'comptia-cysa', nom:'CompTIA CySA+', org:'CompTIA', free:false, prix:'~404 USD', niv:'Intermédiaire+', lien:'https://www.comptia.org/certifications/cybersecurity-analyst', desc:'Analyste SOC.'},
+{id:'giac-gcih', nom:'GCIH', org:'SANS/GIAC', free:false, prix:'~2000 USD', niv:'Avancé', lien:'https://www.giac.org/certifications/certified-incident-handler-gcih/', desc:'Incident handler.'},
+{id:'giac-grem', nom:'GREM', org:'SANS/GIAC', free:false, prix:'~2000 USD', niv:'Avancé', lien:'https://www.giac.org/certifications/reverse-engineering-malware-grem/', desc:'Reverse engineering malware.'},
+{id:'crea', nom:'CREA', org:'Certified Reverse Engineering Analyst', free:false, prix:'~400 USD', niv:'Avancé', lien:'https://www.iremell.com/', desc:'Reverse engineering.'},
+{id:'cissp', nom:'CISSP', org:'ISC2', free:false, prix:'~749 USD', niv:'Expert', lien:'https://www.isc2.org/certifications/cissp', desc:'RSSI.'}
+];
+
+var JOBS = [
+{t:'Analyste SOC', o:'Groupe COFINA', l:'Abidjan', d:'Détection, réponse, threat intel.', u:'https://www.groupecofina.com/carriere/'},
+{t:'Ingénieur Sécurité Senior', o:'BDU CI', l:'Abidjan', d:'SIEM, malware analysis.', u:'https://bduci.com/'},
+{t:'Analyste Malware', o:'DC/BR UMOA', l:'Abidjan', d:'Analyse échantillons.', u:'https://www.dcbruemoa.org/'},
+{t:'Stagiaire SOC', o:'AFG Holding', l:'Abidjan', d:'Surveillance, triage.', u:'https://afgholding-sa.com/'},
+{t:'Incident Responder', o:'Djamo', l:'Abidjan', d:'Réponse à incident.', u:'https://djamo.com/'},
+{t:'Analyste Cyber Junior', o:'Eclozion', l:'Abidjan', d:'Junior SOC.', u:'https://ci.eclozion-opportunities.com/'}
+];
+
+var EXAMENS = {
+partiel: {
+  titre:'Partiel — Défis 1-5',
+  desc:'Intro, sandbox, statique, dynamique, PE. Réussite : 60 %.',
+  req:[1,2,3,4,5],
+  qs:[
+    {q:'Un ransomware ?', o:['Vole identifiants','Chiffre + rançon','Espionne','Mine'], c:1, e:'Chiffrement.'},
+    {q:'Sandbox ?', o:['Accélérer','Isoler','Chiffrer','Router'], c:1, e:'Isolation.'},
+    {q:'Analyse statique ?', o:['Sans exécuter','Avec exécution','En sandbox','Live'], c:0, e:'Sans exécution.'},
+    {q:'Procmon ?', o:['Fichiers/registre','Réseau seul','Mémoire seule','CPU'], c:0, e:'Tout surveiller.'},
+    {q:'Entropie élevée ?', o:['Simple','Chiffré/packé','Vide','Corrompu'], c:1, e:'Chiffrement.'}
+  ]
+},
+final: {
+  titre:'Final — Défis 1-10',
+  desc:'Complet. Réussite : 80 %.',
+  req:[1,2,3,4,5,6,7,8,9,10],
+  qs:[
+    {q:'Volatility ?', o:['Disque','RAM','Réseau','CPU'], c:1, e:'Mémoire.'},
+    {q:'Fileless ?', o:['Disque','Mémoire seule','BIOS','DNS'], c:1, e:'Mémoire.'},
+    {q:'IDA/Ghidra ?', o:['Compiler','Désassembler','Router','Chiffrer'], c:1, e:'Désassemblage.'},
+    {q:'IoC ?', o:['Indicators of Compromise','Internet','Index','Initial'], c:0, e:'Compromise.'},
+    {q:'MITRE ?', o:['Antivirus','Framework TTP','Pare-feu','Langage'], c:1, e:'ATT&CK.'},
+    {q:'Ransomware ?', o:['Payer','Isoler','Redémarrer','Ignorer'], c:1, e:'Isoler.'},
+    {q:'Sauvegarde 3-2-1 ?', o:['3 users','3 copies','3 antivirus','Rien'], c:1, e:'3 copies.'},
+    {q:'Emotet ?', o:['Loader','Firewall','Antivirus','OS'], c:0, e:'Loader.'},
+    {q:'Ryuk ?', o:['Ransomware','VPN','Hash','Antivirus'], c:0, e:'Ransomware.'},
+    {q:'YARA ?', o:['Règles détection','Antivirus','Pare-feu','VPN'], c:0, e:'Détection.'}
+  ]
+}
+};
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function header() {
+  var el = document.getElementById('hs'); if (!el) return;
+  var u = user();
+  if (u) {
+    el.innerHTML = '<span class="pill">👤 ' + u.name + '</span>' +
+      '<span class="pill">N1 <b>' + countDone(1) + '</b></span>' +
+      '<span class="pill">N2 <b>' + countDone(2) + '</b></span>' +
+      '<span class="pill">N3 <b>' + countDone(3) + '</b></span>' +
+      '<span class="pill">N4 <b>' + countDone(4) + '</b></span>' +
+      '<span class="pill">N5 <b>' + countDone(5) + '</b></span>' +
+      '<span class="pill">N6 <b>' + countDone(6) + '</b></span>' +
+      '<span class="pill">N7 <b>' + countDone(7) + '</b></span>' +
+      '<a onclick="logout()">Déconnexion</a>';
+  } else { el.innerHTML = '<span class="pill">Non connecté</span>'; }
+}
+
+function renderLogin() {
+  document.getElementById('app').innerHTML = '<div class="login-box"><div style="text-align:center;margin-bottom:18px"><div style="display:inline-block;width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#22c55e,#16a34a);display:flex;align-items:center;justify-content:center;font-size:1.7rem">🦠</div></div><h2>Niveau 7</h2><p style="text-align:center;color:#94a3b8;font-size:.85rem;margin-bottom:22px">Connecte-toi pour accéder au niveau Analyse malware.</p><input id="loginName" placeholder="Ton prénom" autocomplete="off"><button onclick="login()">Se connecter</button></div>';
+  setTimeout(function(){ var e = document.getElementById('loginName'); if (e) e.focus(); }, 100);
+}
+
+function renderLocked() {
+  var d6 = countDone(6);
+  document.getElementById('app').innerHTML = '<div class="card"><div class="locked"><div class="icon">🔒</div><h3>Niveau 7 verrouillé</h3><p>Termine les 10 défis du Niveau 6 pour accéder au Niveau 7.</p><div class="bar"><div style="width:' + (d6*10) + '%"></div></div><p style="color:#fbbf24;font-weight:700;margin-top:10px">' + d6 + ' / 10 défis Niveau 6</p><div class="nav" style="justify-content:center;margin-top:14px"><button onclick="simulate()">🔓 Simuler N1 à N6</button></div></div></div>';
+}
+
+function renderHome() {
+  var u = user(); if (!u) return renderLogin();
+  var d = countDone(7);
+  var pct = Math.round(d / 10 * 100);
+  var html = '<div class="card"><h2>Bienvenue, ' + u.name + ' 🦠</h2><p>Niveau 7 : <strong>Analyse malware</strong>. Types, sandbox, statique, dynamique, PE, RAM, RE, IoC, ransomware.</p>';
+  html += '<div class="stats-grid"><div class="stat"><span class="big">' + d + '/10</span><span class="lbl">Défis N7</span></div><div class="stat"><span class="big">' + u.certs.length + '</span><span class="lbl">Certifs</span></div><div class="stat"><span class="big">' + pct + '%</span><span class="lbl">Progression</span></div><div class="stat"><span class="big">' + (u.examens['7_partiel'] ? '✅' : '—') + '</span><span class="lbl">Partiel</span></div></div>';
+  html += '<div class="progress-bar"><div style="width:' + pct + '%"></div></div></div>';
+  html += '<div class="card"><h2>🚀 Accès rapide</h2><div class="nav">';
+  html += '<button onclick="go(\'\')">📚 Défis</button>';
+  html += '<button class="sec" onclick="go(\'stats\')">📊 Stats</button>';
+  html += '<button class="gold" onclick="go(\'certif\')">🎓 Certificat</button>';
+  html += '<button class="sec" onclick="go(\'cv\')">📄 CV</button>';
+  html += '<button class="sec" onclick="go(\'jobs\')">💼 Emploi</button>';
+  html += '<button class="sec" onclick="go(\'examens\')">📝 Examens</button>';
+  html += '<button class="sec" onclick="go(\'certs\')">🎓 Certifications</button>';
+  html += '<button class="sec" onclick="go(\'sync\')">🌐 Sync</button>';
+  html += '</div></div>';
+  html += '<div class="card"><h2>🎯 Les 10 défis</h2><div class="grid">';
+  for (var i = 0; i < DEFIS.length; i++) {
+    var df = DEFIS[i];
+    var done = u.done['7_' + df.id];
+    html += '<div class="btn ' + (done ? 'done' : '') + '" onclick="go(\'defi/' + df.id + '\')"><span class="n">Défi ' + df.id + (done ? ' ✓' : '') + '</span><span class="ti">' + df.titre + '</span></div>';
+  }
+  html += '</div></div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+function renderDefi(id) {
+  var d = null;
+  for (var i = 0; i < DEFIS.length; i++) { if (DEFIS[i].id === id) { d = DEFIS[i]; break; } }
+  if (!d) { alert('Défi introuvable'); go('home'); return; }
+  var u = user();
+  var done = u.done['7_' + id];
+  var html = '<div class="crumb"><a onclick="go(\'home\')">Accueil N7</a> / Défi ' + id + '</div>';
+  html += '<div class="card"><h2>' + d.titre + '</h2><div class="intro">' + d.intro + '</div></div>';
+  html += '<div class="card cours"><h2>📖 Cours</h2>' + d.cours + '</div>';
+  html += '<div class="card cours"><h2>🔧 Cas pratiques</h2>' + d.cas + '</div>';
+  html += '<div class="card"><h2>📝 Quiz</h2><div class="quiz">';
+  for (var qi = 0; qi < d.quiz.length; qi++) {
+    var q = d.quiz[qi];
+    html += '<div class="q" data-i="' + qi + '"><p>Q' + (qi + 1) + '. ' + q.q + '</p>';
+    for (var oi = 0; oi < q.o.length; oi++) {
+      html += '<label><input type="radio" name="q' + qi + '" value="' + oi + '"> ' + q.o[oi] + '</label>';
+    }
+    html += '<div class="exp" id="exp' + qi + '">' + q.e + '</div></div>';
+  }
+  html += '<button onclick="validerQuiz(' + id + ')">Vérifier</button><div id="qr"></div></div></div>';
+  html += '<div class="nav">';
+  if (id > 1) html += '<button class="sec" onclick="go(\'defi/' + (id - 1) + '\')">← Précédent</button>';
+  if (id < 10) html += '<button class="sec" onclick="go(\'defi/' + (id + 1) + '\')">Suivant →</button>';
+  html += '<button onclick="go(\'home\')">🏠 Accueil</button>';
+  if (done) html += '<button class="done" style="background:#22c55e;color:#052e16">✓ Validé</button>';
+  html += '</div>';
+  document.getElementById('app').innerHTML = html;
+  window.scrollTo(0, 0);
+}
+
+function validerQuiz(id) {
+  var d = null;
+  for (var i = 0; i < DEFIS.length; i++) { if (DEFIS[i].id === id) { d = DEFIS[i]; break; } }
+  if (!d) return;
+  var correct = 0;
+  for (var qi = 0; qi < d.quiz.length; qi++) {
+    var q = d.quiz[qi];
+    var sel = document.querySelector('input[name="q' + qi + '"]:checked');
+    var labels = document.querySelectorAll('.q[data-i="' + qi + '"] label');
+    for (var li = 0; li < labels.length; li++) { labels[li].classList.remove('ok','ko'); }
+    var e = document.getElementById('exp' + qi); if (e) e.style.display = 'block';
+    if (sel && parseInt(sel.value) === q.c) { correct++; labels[q.c].classList.add('ok'); }
+    else { labels[q.c].classList.add('ok'); if (sel) labels[parseInt(sel.value)].classList.add('ko'); }
+  }
+  var u = user();
+  if (correct === d.quiz.length) {
+    var k = '7_' + id;
+    if (!u.done[k]) {
+      u.done[k] = true;
+      var t = today();
+      if (!u.jours[t]) u.jours[t] = [];
+      if (u.jours[t].indexOf(k) === -1) u.jours[t].push(k);
+    }
+  }
+  save();
+  var r = document.getElementById('qr');
+  var pass = correct === d.quiz.length;
+  r.className = 'res ' + (pass ? 'g' : 'r');
+  r.textContent = pass ? '🎉 ' + correct + '/' + d.quiz.length + ' — Défi validé !' : correct + '/' + d.quiz.length + ' — Réessaie';
+  if (pass && id === 10 && isComplete(7)) {
+    setTimeout(function(){ alert('🏆 Tu as terminé le Niveau 7 !'); }, 400);
+  }
+}
+
+function renderCertif() {
+  var u = user(); if (!u) return;
+  var d = countDone(7);
+  var unlocked = d >= 10;
+  var certId = 'MDPC-N7-' + u.name.slice(0,3).toUpperCase() + '-' + d;
+  var html = '<div class="card">';
+  if (!unlocked) {
+    html += '<div class="locked"><div class="icon">🔒</div><h3>Certificat N7 verrouillé</h3><p>Valide les 10 défis.</p><div class="bar"><div style="width:' + (d*10) + '%"></div></div><p style="color:#fbbf24;font-weight:700;margin-top:10px">' + d + ' / 10</p><div class="nav" style="justify-content:center;margin-top:14px"><button onclick="go(\'\')">📚 Continuer</button></div></div>';
+  } else {
+    html += '<div class="cert"><div class="seal">🏆</div><div class="sub">Certificat officiel</div><div class="title">Niveau 7 — Analyse malware</div><p style="color:#94a3b8;margin:12px 0;font-size:.9rem">Décerné à</p><div class="name">' + u.name + '</div><p style="color:#94a3b8;max-width:500px;margin:12px auto;font-size:.88rem">Pour avoir validé les 10 défis du Niveau 7 : types de malware, sandbox, analyse statique, dynamique, PE, mémoire, RE, IoC, ransomware, cas réels.</p><div class="details"><div>Défis<strong>10/10</strong></div><div>Partiel<strong>' + (u.examens['7_partiel'] ? '✅' : '—') + '</strong></div><div>Final<strong>' + (u.examens['7_final'] ? '✅' : '—') + '</strong></div><div>Date<strong>' + new Date().toLocaleDateString('fr-FR') + '</strong></div></div><div class="id">ID : ' + certId + '</div><div class="sig"><div class="sig-block"><div class="sig-name">H. N\'GUESSAN</div><div class="sig-line">Fondateur</div></div><div class="sig-block"><div class="sig-name" style="font-family:Georgia,serif">' + new Date().toLocaleDateString('fr-FR') + '</div><div class="sig-line">Date</div></div></div></div>';
+    html += '<div class="nav" style="justify-content:center;margin-top:14px"><button onclick="window.print()">🖨️ PDF</button><button class="gold" onclick="go(\'cv\')">📄 CV</button></div>';
+  }
+  html += '</div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+function renderCV() {
+  var u = user(); if (!u) return;
+  var badges = '';
+  for (var i = 0; i < u.certs.length; i++) {
+    for (var j = 0; j < CERTS.length; j++) {
+      if (CERTS[j].id === u.certs[i]) { badges += '<span class="badge">' + CERTS[j].nom + '</span>'; break; }
+    }
+  }
+  if (!badges) badges = '<span style="color:#94a3b8;font-size:.85rem;font-style:italic">Aucune certification.</span>';
+  var defis = '';
+  for (var i = 0; i < DEFIS.length; i++) {
+    defis += '<li>' + (u.done['7_' + DEFIS[i].id] ? '✓' : '○') + ' ' + DEFIS[i].titre + '</li>';
+  }
+  var html = '<div class="card" style="background:none;border:none;padding:0">';
+  html += '<div class="nav" style="margin-bottom:14px"><button onclick="window.print()">🖨️ PDF</button><button class="sec" onclick="copyCV()">📋 Copier</button></div>';
+  html += '<div class="cv-box"><h1>' + u.name.toUpperCase() + '</h1><div class="role">Étudiant L2 UVCI — Aspirant Analyste Malware / SOC</div>';
+  html += '<h2>Formation</h2><ul><li>Licence 2 — UVCI (Sciences informatiques)</li><li>Mon Drôle Parcours Cyber N1 → N7 (N7 : ' + countDone(7) + '/10)</li></ul>';
+  html += '<h2>Compétences</h2><ul><li>Analyse statique (PE, strings, YARA)</li><li>Analyse dynamique (sandbox, Procmon, Wireshark)</li><li>Forensics RAM (Volatility)</li><li>Reverse engineering (Ghidra, IDA)</li><li>Threat intel (MITRE ATT&CK, VirusTotal, MISP)</li><li>Réponse incident ransomware</li></ul>';
+  html += '<h2>Défis N7 validés</h2><ul>' + defis + '</ul>';
+  html += '<h2>Certifications</h2><div>' + badges + '</div>';
+  html += '<p style="margin-top:20px;font-size:.72rem;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px">Généré le ' + new Date().toLocaleDateString('fr-FR') + ' · H. N\'GUESSAN ®</p></div></div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+function copyCV() {
+  var u = user(); if (!u) return;
+  var t = u.name.toUpperCase() + '\nÉtudiant L2 UVCI — Aspirant Analyste Malware / SOC\n\nParcours Cyber N1 à N7\n\nCompétences : analyse statique/dynamique, RAM, RE, IoC, ransomware\n\nGénéré le ' + new Date().toLocaleDateString('fr-FR');
+  if (navigator.clipboard) { navigator.clipboard.writeText(t).then(function(){ alert('CV copié !'); }, function(){ fbCopy(t); }); } else fbCopy(t);
+}
+function fbCopy(t) { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); alert('CV copié !'); } catch (e) { alert('Copie manuelle'); } document.body.removeChild(ta); }
+
+function renderStats() {
+  var u = user(); if (!u) return;
+  var t = today();
+  var tt = u.jours[t] || [];
+  var html = '<div class="card"><h2>📊 Statistiques</h2><div class="stats-grid">';
+  html += '<div class="stat"><span class="big">' + countDone(1) + '</span><span class="lbl">N1</span></div>';
+  html += '<div class="stat"><span class="big">' + countDone(2) + '</span><span class="lbl">N2</span></div>';
+  html += '<div class="stat"><span class="big">' + countDone(3) + '</span><span class="lbl">N3</span></div>';
+  html += '<div class="stat"><span class="big">' + countDone(4) + '</span><span class="lbl">N4</span></div>';
+  html += '<div class="stat"><span class="big">' + countDone(5) + '</span><span class="lbl">N5</span></div>';
+  html += '<div class="stat"><span class="big">' + countDone(6) + '</span><span class="lbl">N6</span></div>';
+  html += '<div class="stat"><span class="big">' + countDone(7) + '</span><span class="lbl">N7</span></div>';
+  html += '</div></div>';
+  html += '<div class="card"><h3>🔥 Aujourd hui</h3>';
+  if (tt.length === 0) html += '<p style="color:#94a3b8">Aucun défi.</p>';
+  else { html += '<ul class="today">'; for (var i = 0; i < tt.length; i++) { html += '<li>✅ ' + tt[i] + '</li>'; } html += '</ul>'; }
+  html += '</div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+function renderJobs() {
+  var html = '<div class="card"><h2>💼 Offres CI</h2><div class="jobs-grid">';
+  for (var i = 0; i < JOBS.length; i++) {
+    var j = JOBS[i];
+    html += '<div class="job"><h4>' + j.t + '</h4><div class="org">' + j.o + ' · ' + j.l + '</div><p>' + j.d + '</p><a href="' + j.u + '" target="_blank">Voir ↗</a></div>';
+  }
+  html += '</div></div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+function renderCerts() {
+  var u = user();
+  var html = '<div class="card"><h2>🎓 Certifications</h2><div class="tabs">';
+  html += '<div class="tab active" onclick="filterCerts(this,\'all\')">Toutes</div>';
+  html += '<div class="tab" onclick="filterCerts(this,\'free\')">Gratuites</div>';
+  html += '<div class="tab" onclick="filterCerts(this,\'paid\')">Payantes</div>';
+  html += '<div class="tab" onclick="filterCerts(this,\'done\')">Obtenues</div>';
+  html += '</div><div class="certs-grid">';
+  for (var i = 0; i < CERTS.length; i++) {
+    var c = CERTS[i];
+    var isD = u.certs.indexOf(c.id) !== -1;
+    html += '<div class="cert-item ' + (c.free ? 'free' : 'paid') + ' ' + (isD ? 'done' : '') + '" data-t="' + (c.free ? 'free' : 'paid') + '" data-d="' + (isD ? '1' : '0') + '">';
+    html += '<h4>' + c.nom + '</h4><div class="org">' + c.org + '</div>';
+    html += '<div><span class="tag ' + (c.free ? 'free' : 'paid') + '">' + (c.free ? 'GRATUIT' : c.prix) + '</span><span class="tag lvl">' + c.niv + '</span></div>';
+    html += '<p>' + c.desc + '</p><a href="' + c.lien + '" target="_blank">Voir ↗</a>';
+    html += ' <button class="sec" style="padding:5px 10px;font-size:.74em" onclick="toggleCert(\'' + c.id + '\')">' + (isD ? '✓' : 'Marquer') + '</button>';
+    html += '</div>';
+  }
+  html += '</div></div>';
+  document.getElementById('app').innerHTML = html;
+}
+function filterCerts(el, type) {
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  el.classList.add('active');
+  var items = document.querySelectorAll('.cert-item');
+  for (var i = 0; i < items.length; i++) {
+    var m = false;
+    if (type === 'all') m = true;
+    else if (type === 'done') m = items[i].dataset.d === '1';
+    else m = items[i].dataset.t === type;
+    items[i].style.display = m ? 'block' : 'none';
+  }
+}
+function toggleCert(id) {
+  var u = user(); if (!u) return;
+  var i = u.certs.indexOf(id);
+  if (i === -1) u.certs.push(id); else u.certs.splice(i, 1);
+  save(); renderCerts();
+}
+
+function renderExamens() {
+  var u = user(); if (!u) return;
+  var html = '<div class="card"><h2>📝 Examens N7</h2>';
+  var types = ['partiel','final'];
+  for (var i = 0; i < types.length; i++) {
+    var type = types[i];
+    var e = EXAMENS[type];
+    var passed = u.examens['7_' + type];
+    var ready = true;
+    for (var j = 0; j < e.req.length; j++) { if (!u.done['7_' + e.req[j]]) { ready = false; break; } }
+    var cls = 'exam ' + (passed ? 'passed' : (ready ? '' : 'locked'));
+    html += '<div class="' + cls + '"><h4>' + e.titre + '</h4><p style="font-size:.85em;color:#cbd5e1">' + e.desc + '</p>';
+    if (passed) html += '<p style="color:#86efac;font-size:.85em">✅ ' + passed + '</p><button class="sec" onclick="go(\'examen/' + type + '\')">Refaire</button>';
+    else if (ready) html += '<button class="gold" onclick="go(\'examen/' + type + '\')">Passer</button>';
+    else html += '<p style="color:#fbbf24;font-size:.82em">🔒 Défis ' + e.req.join(', ') + '</p>';
+    html += '</div>';
+  }
+  html += '</div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+function renderExamen(type) {
+  var u = user(); if (!u) return;
+  var e = EXAMENS[type]; if (!e) { go('examens'); return; }
+  var ready = true;
+  for (var j = 0; j < e.req.length; j++) { if (!u.done['7_' + e.req[j]]) { ready = false; break; } }
+  if (!ready) { alert('Valide les défis requis.'); go('examens'); return; }
+  var html = '<div class="card"><h2>' + e.titre + '</h2><p style="color:#94a3b8;font-size:.85em">' + e.desc + '</p><div class="quiz">';
+  for (var qi = 0; qi < e.qs.length; qi++) {
+    var q = e.qs[qi];
+    html += '<div class="q" data-i="' + qi + '"><p>Q' + (qi + 1) + '. ' + q.q + '</p>';
+    for (var oi = 0; oi < q.o.length; oi++) {
+      html += '<label><input type="radio" name="ex' + qi + '" value="' + oi + '"> ' + q.o[oi] + '</label>';
+    }
+    html += '<div class="exp" id="exexp' + qi + '">' + q.e + '</div></div>';
+  }
+  html += '<button onclick="validerExamen(\'' + type + '\')">Soumettre</button><div id="er"></div></div></div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+function validerExamen(type) {
+  var u = user(); if (!u) return;
+  var e = EXAMENS[type]; if (!e) return;
+  var correct = 0;
+  for (var qi = 0; qi < e.qs.length; qi++) {
+    var q = e.qs[qi];
+    var sel = document.querySelector('input[name="ex' + qi + '"]:checked');
+    var labels = document.querySelectorAll('.q[data-i="' + qi + '"] label');
+    for (var li = 0; li < labels.length; li++) { labels[li].classList.remove('ok','ko'); }
+    var ex = document.getElementById('exexp' + qi); if (ex) ex.style.display = 'block';
+    if (sel && parseInt(sel.value) === q.c) { correct++; labels[q.c].classList.add('ok'); }
+    else { labels[q.c].classList.add('ok'); if (sel) labels[parseInt(sel.value)].classList.add('ko'); }
+  }
+  var pct = Math.round(correct / e.qs.length * 100);
+  var req = type === 'final' ? 80 : 60;
+  var pass = pct >= req;
+  if (pass) { u.examens['7_' + type] = today(); save(); }
+  var r = document.getElementById('er');
+  r.className = 'res ' + (pass ? 'g' : 'r');
+  r.textContent = pass ? '🎉 ' + correct + '/' + e.qs.length + ' (' + pct + '%)' : correct + '/' + e.qs.length + ' (' + pct + '%) — Il faut ' + req + '%';
+}
+
+function b64(s) { try { return btoa(unescape(encodeURIComponent(s))); } catch(e) { return ''; } }
+function unb64(b) { try { return decodeURIComponent(escape(atob(b.replace(/\s/g,'')))); } catch(e) { return null; } }
+function exportCode() { return b64(JSON.stringify(state)); }
+function importCode(c) { var j = unb64(c.trim()); if (!j) return false; try { var d = JSON.parse(j); if (!d) return false; state = Object.assign({}, state, d); save(); return true; } catch(e) { return false; } }
+function dlBackup() { var b = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'}); var url = URL.createObjectURL(b); var a = document.createElement('a'); a.href = url; a.download = 'mdpc-n7-' + today() + '.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }
+function readFile(input) { var f = input.files[0]; if (!f) return; var r = new FileReader(); r.onload = function(e) { try { var d = JSON.parse(e.target.result); state = Object.assign({}, state, d); save(); alert('Restauré !'); route(); } catch(err) { alert('Invalide'); } }; r.readAsText(f); }
+
+function renderSync() {
+  var code = exportCode();
+  var html = '<div class="card"><h2>🌐 Sync</h2></div>';
+  html += '<div class="card"><h3>📋 Code</h3><div class="sync-box"><label>Ton code</label><textarea id="so" readonly onclick="this.select()">' + code + '</textarea><div style="margin-top:8px"><button onclick="copyCode()">Copier</button></div></div>';
+  html += '<div class="sync-box"><label>Coller un code</label><textarea id="si" placeholder="Colle ici..."></textarea><div style="margin-top:8px"><button onclick="applyCode()">Restaurer</button></div></div></div>';
+  html += '<div class="card"><h3>💾 Fichier</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="dlBackup()">Télécharger</button><input type="file" id="bf" accept=".json" style="display:none" onchange="readFile(this)"><button class="sec" onclick="document.getElementById(\'bf\').click()">Importer</button></div></div>';
+  document.getElementById('app').innerHTML = html;
+}
+function copyCode() { var ta = document.getElementById('so'); ta.select(); try { document.execCommand('copy'); alert('Copié !'); } catch(e) { alert('Manuel'); } }
+function applyCode() { var c = document.getElementById('si').value; if (!c.trim()) { alert('Colle un code.'); return; } if (importCode(c)) { alert('Restauré !'); route(); } else alert('Code invalide.'); }
+
+function route() {
+  try {
+    header();
+    if (!state.currentUser) { renderLogin(); return; }
+    if (!isUnlocked(7)) { renderLocked(); return; }
+    var h = (location.hash || '#home').slice(1);
+    var p = h.split('/');
+    if (p[0] === 'home' || p[0] === '') return renderHome();
+    if (p[0] === 'defi' && p[1]) return renderDefi(parseInt(p[1]));
+    if (p[0] === 'certif') return renderCertif();
+    if (p[0] === 'cv') return renderCV();
+    if (p[0] === 'stats') return renderStats();
+    if (p[0] === 'jobs') return renderJobs();
+    if (p[0] === 'examens') return renderExamens();
+    if (p[0] === 'examen' && p[1]) return renderExamen(p[1]);
+    if (p[0] === 'certs') return renderCerts();
+    if (p[0] === 'sync') return renderSync();
+    renderHome();
+  } catch(e) {
+    console.error('Route error:', e);
+    document.getElementById('app').innerHTML = '<div class="card"><h2 style="color:#ef4444">Erreur</h2><p style="color:#ef4444">' + e.message + '</p><pre style="color:#fca5a5;font-size:.8em;white-space:pre-wrap">' + (e.stack || '') + '</pre></div>';
+  }
+}
+window.addEventListener('hashchange', route);
+try { route(); } catch(e) {
+  document.getElementById('app').innerHTML = '<div class="card"><h2 style="color:#ef4444">Erreur init</h2><p style="color:#ef4444">' + e.message + '</p></div>';
+}
+</script>
+</body>
+</html>
